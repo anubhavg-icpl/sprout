@@ -14,30 +14,34 @@
 @font-face { font-family: "JetBrains Mono"; src: url("../assets/fonts/JetBrainsMono-Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
 
 :root {
-  --bg: #0b130d; --bg-glow: #1d3a25; --panel: #121c15; --panel-2: #172219; --raise: #1b2a1f;
-  --border: #263a2b; --border-strong: #35553d;
-  --text: #eef8f0; --muted: #93ab98; --faint: #6c8571;
-  --accent: #7bf08f; --accent-ink: #06200c; --accent-soft: #7bf08f1f; --accent-2: #b7d62b;
-  --danger: #ff6b7a; --warn: #f5b623; --info: #6cb8ff;
-  --stage-a: #ffffff; --stage-b: #f3f8f2; --stage-c: #e2ece1;
-  --user-bubble: #1f3a27; --code-bg: #0a100b;
-  --shadow: 0 20px 50px -24px #000c;
+  --bg: #090b10; --bg-glow: #16213a; --panel: #10131a; --panel-2: #151922; --raise: #1b202b;
+  --border: #232a37; --border-strong: #313a4b;
+  --text: #eef2f8; --muted: #9aa4b5; --faint: #6b7487;
+  --accent: #2ef2c4; --accent-ink: #04211b; --accent-soft: #2ef2c41f; --accent-2: #8b7bff;
+  --danger: #ff6b81; --warn: #fbbf24; --info: #60a5fa;
+  --stage-a: #1d2740; --stage-b: #111725; --stage-c: #0a0d14; --stage-text: #8b97ad;
+  --user-bubble: #1a2131; --code-bg: #0b0e14;
+  --shadow: 0 24px 60px -28px #000d;
   --radius: 18px; --radius-sm: 11px;
   --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 :root[data-theme="light"] {
-  --bg: #eef4ef; --bg-glow: #d4ead9; --panel: #ffffff; --panel-2: #f6faf6; --raise: #eef5ef;
-  --border: #d4e2d6; --border-strong: #b5ccb9;
-  --text: #102016; --muted: #546b5a; --faint: #7e9483;
-  --accent: #15a63a; --accent-ink: #ffffff; --accent-soft: #15a63a18; --accent-2: #7a9a10;
-  --user-bubble: #e1f3e4; --code-bg: #f3f7f3; --shadow: 0 18px 40px -26px #1c3a2466;
+  --bg: #f4f6fb; --bg-glow: #e3e8ff; --panel: #ffffff; --panel-2: #f7f8fc; --raise: #eef1f7;
+  --border: #e1e5ee; --border-strong: #c9d0de;
+  --text: #0f1420; --muted: #586174; --faint: #8a93a6;
+  --accent: #0fb894; --accent-ink: #ffffff; --accent-soft: #0fb89418; --accent-2: #6d5dfc;
+  --stage-a: #ffffff; --stage-b: #eef1f8; --stage-c: #dde3ef; --stage-text: #7a8499;
+  --user-bubble: #eef1fb; --code-bg: #f5f7fb; --shadow: 0 18px 40px -26px #1d2a4a55;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]):not([data-theme="light"]) {
-    --bg: #eef4ef; --bg-glow: #d4ead9; --panel: #ffffff; --panel-2: #f6faf6; --raise: #eef5ef;
-    --border: #d4e2d6; --border-strong: #b5ccb9; --text: #102016; --muted: #546b5a; --faint: #7e9483;
-    --accent: #15a63a; --accent-ink: #ffffff; --accent-soft: #15a63a18; --user-bubble: #e1f3e4; --code-bg: #f3f7f3;
+    --bg: #f4f6fb; --bg-glow: #e3e8ff; --panel: #ffffff; --panel-2: #f7f8fc; --raise: #eef1f7;
+    --border: #e1e5ee; --border-strong: #c9d0de;
+    --text: #0f1420; --muted: #586174; --faint: #8a93a6;
+    --accent: #0fb894; --accent-ink: #ffffff; --accent-soft: #0fb89418; --accent-2: #6d5dfc;
+    --stage-a: #ffffff; --stage-b: #eef1f8; --stage-c: #dde3ef; --stage-text: #7a8499;
+    --user-bubble: #eef1fb; --code-bg: #f5f7fb; --shadow: 0 18px 40px -26px #1d2a4a55;
   }
 }
 
@@ -111,12 +115,15 @@ h1 { margin: 0; font-size: 19px; letter-spacing: -.4px; }
 .chat-card { display: flex; flex-direction: column; min-height: 0; }
 
 /* === STAGE === */
-.stage { position: relative; height: 340px; flex: none; background: radial-gradient(ellipse at 50% 80%, var(--stage-a) 0%, var(--stage-b) 49%, var(--stage-c) 85%); }
+.stage { position: relative; height: 340px; flex: none; background: radial-gradient(ellipse 70% 60% at 50% 38%, var(--stage-a) 0%, var(--stage-b) 55%, var(--stage-c) 100%); }
+/* Faint perspective grid behind the robot — pure CSS, no asset. */
+.stage::before { content: ""; position: absolute; inset: 45% 0 0; background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--accent) 9%, transparent) 0 1px, transparent 1px 38px), repeating-linear-gradient(0deg, color-mix(in srgb, var(--accent) 9%, transparent) 0 1px, transparent 1px 38px); transform: perspective(300px) rotateX(58deg); transform-origin: top; mask-image: linear-gradient(transparent, #000 30%, transparent 95%); pointer-events: none; }
+#avatar { position: relative; }
 #avatar { width: 100%; height: 100%; display: block; }
-.stage-label { position: absolute; top: 14px; left: 16px; font-size: 10.5px; letter-spacing: 1.7px; color: #7f9683; font-weight: 600; }
-.now { position: absolute; left: 14px; bottom: 14px; background: #14241ad9; color: #f2fbf4; border: 1px solid #3d5a45; border-radius: 12px; padding: 8px 12px; backdrop-filter: blur(8px); max-width: calc(100% - 28px); }
+.stage-label { position: absolute; top: 14px; left: 16px; font-size: 10.5px; letter-spacing: 1.7px; color: var(--stage-text); font-weight: 600; }
+.now { position: absolute; left: 14px; bottom: 14px; background: color-mix(in srgb, var(--panel) 72%, transparent); color: var(--text); border: 1px solid var(--border-strong); border-radius: 12px; padding: 8px 12px; backdrop-filter: blur(10px); max-width: calc(100% - 28px); }
 .now strong { font-size: 14.5px; display: block; }
-.now small { display: block; color: #a9c4af; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.now small { display: block; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* === ACTIVITY === */
 .activity { padding: 14px 16px 16px; overflow-y: auto; border-top: 1px solid var(--border); flex: 1; min-height: 0; }
@@ -133,7 +140,7 @@ h1 { margin: 0; font-size: 19px; letter-spacing: -.4px; }
 .timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
 .step { border: 1px solid var(--border); border-radius: 13px; background: var(--panel-2); overflow: hidden; }
 .step[data-agent="researcher"] { --agent: var(--info); } .step[data-agent="coder"] { --agent: var(--warn); }
-.step[data-agent="writer"] { --agent: #e88fff; } .step[data-agent="planner"] { --agent: var(--accent); }
+.step[data-agent="writer"] { --agent: #f472b6; } .step[data-agent="planner"] { --agent: var(--accent-2); }
 .step-head { display: flex; gap: 10px; align-items: center; padding: 10px 12px; }
 .step-badge { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; color: var(--agent); background: color-mix(in srgb, var(--agent) 14%, transparent); flex: none; }
 .step-badge .ic { width: 15px; height: 15px; }

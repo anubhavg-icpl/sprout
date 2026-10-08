@@ -1,6 +1,6 @@
 # Sprout
 
-Animated 3D robot avatar (three.js) fronting a Claude-powered **lead agent that delegates to specialist
+Animated 3D robot avatar (three.js, pearl/graphite restyle with glowing eyes) fronting a Claude-powered **lead agent that delegates to specialist
 sub-agents** (Researcher, Coder, Writer, Planner). Bun server + vanilla JS, one runtime
 dependency (`@anthropic-ai/sdk`, pinned). Grew out of `prototype/human-v0.1.html`.
 

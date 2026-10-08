@@ -16,15 +16,26 @@
 // (a +x offset spun the head backwards). Per-state motion is applied to the
 // whole model root instead, which the mixer never animates.
 // Reduced motion: intensity 0 slows clips and swaps Dance for ThumbsUp.
+// Look: the GLB's three materials (Main shell, Grey joints, Black eyes/brows)
+// are REPLACED at load with a modern palette (see LOOK); lighting comes from a
+// procedural RoomEnvironment (no HDR file) + key/rim lights, ACES tone mapping.
 
 import * as THREE from "../vendor/three/three.module.min.js";
 import { GLTFLoader } from "../vendor/three/addons/loaders/GLTFLoader.js";
+import { RoomEnvironment } from "../vendor/three/addons/environments/RoomEnvironment.js";
 
 const MODEL_URL = "assets/models/RobotExpressive.glb";
 export const STATES = ["idle", "listening", "thinking", "talking", "happy", "celebrating", "meditating"];
 // [clip, loop?] per state; one-shot clips clamp on their last frame.
 const CLIPS = { idle: ["Idle", true], listening: ["Idle", true], thinking: ["Idle", true], talking: ["Yes", true], happy: ["ThumbsUp", false], celebrating: ["Dance", true], meditating: ["Sitting", false] };
 const FADE_S = 0.45;
+// Palette: pearl shell + graphite joints + glowing eyes in the UI accent.
+const LOOK = {
+  Main: { color: 0xe6ebf2, roughness: 0.36, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.12, sheen: 0.4, sheenColor: 0xcde9ff },
+  Grey: { color: 0x2b313d, roughness: 0.38, metalness: 0.7, clearcoat: 0.6, clearcoatRoughness: 0.25 },
+  Black: { color: 0x0b1714, emissive: 0x2ef2c4, emissiveIntensity: 2.4, roughness: 0.2, metalness: 0 },
+};
+const ACCENT = 0x2ef2c4;
 
 export async function createRobot(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -32,23 +43,47 @@ export async function createRobot(canvas) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.92;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
 
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x8fbf98, 2.2));
-  const key = new THREE.DirectionalLight(0xffffff, 2.4);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 0.65; // full-strength room env washes the white shell flat
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x1a2230, 0.6));
+  const key = new THREE.DirectionalLight(0xffffff, 2.2);
   key.position.set(3, 8, 6); key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
   Object.assign(key.shadow.camera, { left: -4, right: 4, top: 6, bottom: -2 });
   scene.add(key);
-  const rim = new THREE.DirectionalLight(0x9dffb0, 1.1); rim.position.set(-5, 4, -4); scene.add(rim);
-  const ground = new THREE.Mesh(new THREE.CircleGeometry(3.2, 48), new THREE.ShadowMaterial({ opacity: 0.18 }));
+  const rim = new THREE.DirectionalLight(0x8b7bff, 2.6); rim.position.set(-5, 5, -5); scene.add(rim);
+  const rim2 = new THREE.DirectionalLight(ACCENT, 1.6); rim2.position.set(5, 3, -4); scene.add(rim2);
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(3.2, 64), new THREE.ShadowMaterial({ opacity: 0.35 }));
   ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  // Glowing floor ring; its pulse speed/brightness follows the state (see loop).
+  const ring = new THREE.Mesh(new THREE.RingGeometry(1.55, 1.7, 96), new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.5, toneMapped: false }));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.01; scene.add(ring);
 
   const gltf = await new GLTFLoader().loadAsync(MODEL_URL);
   const model = gltf.scene;
-  model.traverse((o) => { if (o.isMesh) { o.castShadow = true; } });
+  const restyled = new Map();
+  model.traverse((o) => {
+    if (!o.isMesh) return;
+    o.castShadow = true;
+    const name = o.material.name;
+    if (!LOOK[name]) return;
+    if (!restyled.has(name)) {
+      const { color, emissive, sheenColor, ...rest } = LOOK[name];
+      restyled.set(name, new THREE.MeshPhysicalMaterial({
+        name, color: new THREE.Color(color), ...(emissive && { emissive: new THREE.Color(emissive) }),
+        ...(sheenColor && { sheenColor: new THREE.Color(sheenColor) }), ...rest,
+      }));
+    }
+    o.material = restyled.get(name); // morph targets work on any standard material in r150+
+  });
+  const eyes = restyled.get("Black");
   scene.add(model);
   const skeleton = new THREE.SkeletonHelper(model); skeleton.visible = false; scene.add(skeleton);
 
@@ -116,6 +151,12 @@ export async function createRobot(canvas) {
     model.rotation.y += (wantY - model.rotation.y) * k;
     model.rotation.x += (wantX - model.rotation.x) * k;
     model.rotation.z += (wantZ - model.rotation.z) * k;
+    // Eyes + ring "breathe"; busier states glow faster and brighter.
+    const busy = state === "thinking" || state === "talking" || state === "celebrating";
+    const pulse = 0.5 + 0.5 * Math.sin(t * (busy ? 5 : 1.6));
+    if (eyes) eyes.emissiveIntensity = 1.8 + pulse * (busy ? 1.6 : 0.6) + (state === "talking" ? (mouth ?? 0) * 1.2 : 0);
+    ring.material.opacity = (state === "meditating" ? 0.25 : 0.3) + pulse * (busy ? 0.45 : 0.2);
+    ring.scale.setScalar(1 + pulse * (busy ? 0.06 : 0.02));
     renderer.render(scene, camera);
   });
 
