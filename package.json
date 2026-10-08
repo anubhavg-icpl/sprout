@@ -1,0 +1,15 @@
+{
+  "name": "sprout",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Sprout — an animated avatar fronting a Claude-powered multi-agent orchestrator",
+  "scripts": {
+    "dev": "bun --watch src/server.ts",
+    "start": "bun src/server.ts",
+    "check": "bun build src/server.ts --target=bun --outfile=/dev/null && bun test"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.131.0"
+  }
+}

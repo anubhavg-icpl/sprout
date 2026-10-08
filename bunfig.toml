@@ -1,0 +1,4 @@
+[install]
+# Supply-chain hygiene: never run dependency lifecycle scripts.
+ignore-scripts = true
+exact = true
