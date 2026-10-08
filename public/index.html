@@ -41,7 +41,7 @@
       <section class="stage-card" aria-label="Avatar and agent activity">
         <div class="stage">
           <span class="stage-label">SPROUT · LEAD AGENT</span>
-          <canvas id="avatar" aria-label="Animated avatar"></canvas>
+          <canvas id="avatar" aria-label="Animated 3D robot avatar"></canvas>
           <div class="now" aria-live="off">
             <strong id="state-name">Idle</strong>
             <small id="state-detail">Waiting for you</small>
@@ -95,7 +95,6 @@
         <label class="row">Motion intensity <output id="intensity-out">70%</output></label>
         <input id="opt-intensity" type="range" min="0" max="100" value="70" />
         <label class="row toggle"><span>Show skeleton <small>joints &amp; bones</small></span><input id="opt-bones" type="checkbox" /></label>
-        <label class="row toggle"><span>Autonomous blinking</span><input id="opt-blink" type="checkbox" checked /></label>
         <label class="row toggle"><span>Meditate when idle <small>after 60 s</small></span><input id="opt-meditate" type="checkbox" checked /></label>
       </section>
       <section>

@@ -1,6 +1,6 @@
 # Sprout 🌱
 
-An animated avatar that **leads a team of AI agents**. Ask anything: Sprout answers simple
+A 3D robot avatar that **leads a team of AI agents**. Ask anything: Sprout answers simple
 things itself and delegates the rest to specialists, while you watch each step live and
 the avatar reacts to what the team is doing.
 
@@ -51,7 +51,9 @@ body is capped at 64 KB, payloads are validated, a strict CSP is sent, the serve
 
 ## Credits
 
-- Avatar rig: original Pet Motion Lab prototype (`prototype/`).
+- 3D robot: [RobotExpressive](https://github.com/mrdoob/three.js/tree/r185/examples/models/gltf/RobotExpressive) by Tomás Laulhé ([Quaternius](https://quaternius.com)), CC0; morphs by Don McCurdy.
+- 3D engine: [three.js](https://github.com/mrdoob/three.js) `r185`, MIT.
+- Original 2D prototype kept in `prototype/`.
 - Icons: [Lucide](https://github.com/lucide-icons/lucide) `0.544.0`, ISC.
 - Fonts: [Inter](https://github.com/rsms/inter) `v4.1` and [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) `v2.304`, both OFL-1.1.
 - Sounds: [Kenney Interface Sounds](https://kenney.nl), CC0, via [smaltra/soundix](https://github.com/smaltra/soundix) `f8d863b`.

@@ -264,7 +264,8 @@ dialog::backdrop { background: #000a; backdrop-filter: blur(3px); }
   .pill { display: none; }
 }
 @media (max-width: 520px) {
-  .stage { height: 170px; width: 44%; min-width: 0; }
+  .stage { height: 180px; width: 50%; min-width: 0; }
+  .now { top: 8px; bottom: auto; padding: 4px 8px; } .now strong { font-size: 12.5px; }
   .activity { max-height: 170px; }
   .activity-head .muted, .now small { display: none; }
   .topbar { margin-bottom: 8px; } .sub { max-width: 46vw; }

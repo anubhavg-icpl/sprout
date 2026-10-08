@@ -1,6 +1,6 @@
 # Sprout
 
-Animated 2D avatar fronting a Claude-powered **lead agent that delegates to specialist
+Animated 3D robot avatar (three.js) fronting a Claude-powered **lead agent that delegates to specialist
 sub-agents** (Researcher, Coder, Writer, Planner). Bun server + vanilla JS, one runtime
 dependency (`@anthropic-ai/sdk`, pinned). Grew out of `prototype/human-v0.1.html`.
 
@@ -22,13 +22,14 @@ dependency (`@anthropic-ai/sdk`, pinned). Grew out of `prototype/human-v0.1.html
 | `src/providers.ts` | Provider resolution (env only) + solo-mode xAI/Ollama adapters |
 | `src/server.ts` | Static files, `/api/health`, `/api/chat`, CSP, rate limit, body caps |
 | `public/js/app.js` | Event → transcript / timeline / avatar mood mapping, voice, persistence |
-| `public/js/rig.js` | Canvas skeletal rig; states + pose channels |
+| `public/js/robot.js` | 3D robot avatar: GLB clips + face morphs per state |
+| `public/vendor/three/` | Vendored three.js r185 (see `VENDORED.md`) |
 | `public/js/markdown.js` | XSS-safe Markdown → DOM |
 | `public/assets/` | Vendored Lucide icons, Inter/JetBrains Mono, Kenney sounds — licenses in `assets/licenses/` |
 
 ## Conventions
 
-- Avatar state is driven only by lifecycle events in `app.js` (`mood()`); the rig never picks its own state.
+- Avatar state is driven only by lifecycle events in `app.js` (`mood()`); `robot.js` never picks its own state. Clip names come from the GLB: Idle, Yes, ThumbsUp, Dance, Sitting, Wave, …
 - New SSE event types: add the emitter in `src/agents.ts`, the `case` in `app.js run()`, and list it in both contract blocks.
 - New icons: copy the SVG from Lucide tag `0.544.0` into `public/assets/icons/` and add one `.ic-<name>` rule.
 - Commits: Conventional Commits.
@@ -40,7 +41,9 @@ dependency (`@anthropic-ai/sdk`, pinned). Grew out of `prototype/human-v0.1.html
 - `.npmrc`/`bunfig.toml` disable dependency lifecycle scripts and pin exact versions (supply-chain hygiene) — keep them.
 - **Anthropic history is append-only.** `agents.ts` pushes assistant `content` back unchanged (Opus 5.5 binds thinking blocks); all tool_results for a turn go in one user message.
 - **Opus 5.5 rejects** `thinking: disabled`, `budget_tokens`, and forced `tool_choice` — don't add them.
-- **Rig pose channels**: a new channel must be added to both `KEYS` and `BASE` or blending silently skips it.
+- **three.js addons import `'three'` by bare name** — vendored copies are rewritten to relative paths because CSP forbids an inline import map. Re-apply on upgrade (`public/vendor/three/VENDORED.md`).
+- **Robot bones:** don't hand-rotate `Head`/`Neck` (axes aren't pitch/yaw; it spins the head backwards). Act on the model root, or pick a clip.
+- CSP `img-src` must keep `blob:` — GLTFLoader decodes the GLB's embedded textures to blob URLs.
 - **Bun `idleTimeout: 255`** in `server.ts` keeps quiet SSE streams alive while the model thinks; the 10 s default kills them.
 - Visual E2E stubs `/api/*` inside the browser only (page.route); the product must never fabricate answers.
 - `docs/screenshots/` are captured from the E2E run; regenerate, don't hand-edit.

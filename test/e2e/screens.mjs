@@ -53,7 +53,9 @@ async function shoot(name, { width, height, theme, live = true, stage, base = BA
     });
   }
   await page.goto(base, { waitUntil: "networkidle" });
-  await page.waitForTimeout(700);
+  // 3D robot: wait for the GLB to load, then let the greeting wave play out.
+  await page.waitForSelector("#avatar[data-ready]", { timeout: 15000 }).catch(() => errors.push(`${name}: robot never became ready`));
+  await page.waitForTimeout(stage ? 300 : 2500);
   if (stage) {
     await page.click(".chip >> nth=0");
     await page.waitForTimeout(stage === "mid" ? 900 : 1600);

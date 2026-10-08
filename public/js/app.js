@@ -3,7 +3,7 @@
 // Data flow: composer -> POST /api/chat -> SSE events (vocabulary owned by
 // src/agents.ts: run_started, text_delta, step_started, step_finished,
 // tool_call, sources, plan, emote, error, run_finished, done) -> handlers below
-// update (a) the transcript, (b) the activity timeline, (c) the avatar.
+// update (a) the transcript, (b) the activity timeline, (c) the 3D robot avatar (robot.js).
 // Invariants:
 //   - The avatar state is derived ONLY from lifecycle events via `mood()`
 //     (min dwell avoids flicker); the rig itself never picks a state.
@@ -16,7 +16,7 @@
 // === SECTIONS === dom · prefs · store · avatar · sound/voice · render ·
 //                  activity · run · composer · settings · boot
 
-import { createRig } from "./rig.js";
+import { createRobot } from "./robot.js";
 import { renderMarkdown } from "./markdown.js";
 
 // === DOM ===
@@ -39,10 +39,19 @@ let messages = load(STORE_KEY, { v: 1, messages: [] }).messages ?? [];
 const persist = () => save(STORE_KEY, { v: 1, messages: messages.slice(-80) });
 
 // === AVATAR ===
-const rig = createRig($("avatar"));
+// Until the 3D model loads (or if WebGL is unavailable) a no-op stand-in keeps
+// every caller working; `rig.state` still tracks the requested state.
+let rig = { state: "idle", setState(s) { this.state = s; }, setMouth() {}, setIntensity() {}, setBones() {}, setBlink() {} };
 const applyMotion = () => rig.setIntensity(reduceMotion.matches ? 0 : prefs.intensity / 100);
-applyMotion(); reduceMotion.addEventListener("change", applyMotion);
-rig.setBones(prefs.bones); rig.setBlink(prefs.blink);
+createRobot($("avatar")).then((robot) => {
+  robot.setState(rig.state); rig = robot;
+  applyMotion(); rig.setBones(prefs.bones);
+  $("avatar").dataset.ready = "true";
+}).catch((e) => {
+  console.warn("3D avatar unavailable:", e);
+  $("state-detail").textContent = "3D avatar unavailable in this browser";
+});
+reduceMotion.addEventListener("change", applyMotion);
 
 const MOOD_TEXT = {
   idle: ["Idle", "Waiting for you"], listening: ["Listening", "I'm all ears"], thinking: ["Thinking", "Working it out"],
@@ -365,7 +374,6 @@ const bind = (id, key, apply, prop = "checked") => {
 bind("opt-intensity", "intensity", () => { $("intensity-out").textContent = prefs.intensity + "%"; applyMotion(); }, "value");
 $("intensity-out").textContent = prefs.intensity + "%";
 bind("opt-bones", "bones", () => rig.setBones(prefs.bones));
-bind("opt-blink", "blink", () => rig.setBlink(prefs.blink));
 bind("opt-meditate", "meditate", armIdle);
 bind("opt-sounds", "sounds");
 bind("opt-tts", "tts", syncVoiceBtn);
