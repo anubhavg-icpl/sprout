@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "bun --watch src/server.ts",
     "start": "bun src/server.ts",
-    "check": "bun build src/server.ts --target=bun --outfile=/dev/null && bun test"
+    "check": "bun build src/server.ts --target=bun --outfile=/dev/null && bun scripts/check-invariants.ts && bun test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.131.0"

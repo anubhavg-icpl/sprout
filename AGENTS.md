@@ -11,7 +11,7 @@ dependency (`@anthropic-ai/sdk`, pinned). Grew out of `prototype/human-v0.1.html
 | Install | `bun install` (lifecycle scripts disabled via `bunfig.toml`) |
 | Run | `bun run start` → http://127.0.0.1:8787 |
 | Dev (watch) | `bun run dev` |
-| **Gate** | `bun run check` (bundle-compiles server + `bun test`) |
+| **Gate** | `bun run check` (bundle-compiles server, `scripts/check-invariants.ts`, `bun test`) |
 | Visual E2E | server on 8191, then `CHROME_PATH=<chromium> PLAYWRIGHT_PATH=$(npm root -g)/playwright node test/e2e/screens.mjs` → `docs/screenshots/` |
 
 ## Map
@@ -35,11 +35,12 @@ dependency (`@anthropic-ai/sdk`, pinned). Grew out of `prototype/human-v0.1.html
 
 ## Landmines
 
-- **No inline script/style anywhere** — CSP is `script-src 'self'; style-src 'self'`. Inline code silently does nothing.
-- **Never `innerHTML` model output.** `markdown.js` builds text nodes; `test/markdown-xss.test.ts` guards it.
+- **No inline script/style anywhere** — CSP is `script-src 'self'; style-src 'self'`. Inline code silently does nothing. Enforced by `scripts/check-invariants.ts`.
+- **Never `innerHTML` model output.** `markdown.js` builds text nodes; `test/markdown-xss.test.ts` + the invariant gate guard it.
+- `.npmrc`/`bunfig.toml` disable dependency lifecycle scripts and pin exact versions (supply-chain hygiene) — keep them.
 - **Anthropic history is append-only.** `agents.ts` pushes assistant `content` back unchanged (Opus 5.5 binds thinking blocks); all tool_results for a turn go in one user message.
 - **Opus 5.5 rejects** `thinking: disabled`, `budget_tokens`, and forced `tool_choice` — don't add them.
 - **Rig pose channels**: a new channel must be added to both `KEYS` and `BASE` or blending silently skips it.
 - **Bun `idleTimeout: 255`** in `server.ts` keeps quiet SSE streams alive while the model thinks; the 10 s default kills them.
-- In this dev shell `curl` is aliased to `curlie` (different flags) — use `/usr/bin/curl` for scripted checks.
+- Visual E2E stubs `/api/*` inside the browser only (page.route); the product must never fabricate answers.
 - `docs/screenshots/` are captured from the E2E run; regenerate, don't hand-edit.

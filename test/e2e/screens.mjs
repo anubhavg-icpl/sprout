@@ -9,6 +9,7 @@ import { createRequire } from "node:module";
 // Playwright is a global install (not a project dep); ESM ignores NODE_PATH, so resolve via require.
 const { chromium } = createRequire(import.meta.url)(process.env.PLAYWRIGHT_PATH ?? "playwright");
 import { mkdirSync } from "node:fs";
+import { createServer } from "node:http";
 
 const BASE = process.env.BASE ?? "http://127.0.0.1:8191";
 const OUT = new URL("../../docs/screenshots/", import.meta.url).pathname;
@@ -32,9 +33,11 @@ const SCRIPT = [
   { type: "done" },
 ];
 
+const hang = createServer((_, res) => { res.writeHead(200, { "content-type": "text/event-stream" }); res.write(sse(SCRIPT.slice(0, 9))); });
+await new Promise((ok) => hang.listen(0, "127.0.0.1", ok));
 const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
 const errors = [];
-async function shoot(name, { width, height, theme, live = true, stage }) {
+async function shoot(name, { width, height, theme, live = true, stage, base = BASE }) {
   const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1, colorScheme: theme });
   const page = await ctx.newPage();
   page.on("console", (m) => m.type() === "error" && errors.push(`${name}: ${m.text()}`));
@@ -43,11 +46,13 @@ async function shoot(name, { width, height, theme, live = true, stage }) {
     await page.route("**/api/health", (r) => r.fulfill({ json: { provider: { name: "anthropic", model: "claude-opus-5-5", webSearch: true, team: true } } }));
     await page.route("**/api/chat", async (r) => {
       // Hold the stream open for "mid-run" shots by serving only part of the script.
-      const evs = stage === "mid" ? SCRIPT.slice(0, 9) : SCRIPT;
-      await r.fulfill({ status: 200, headers: { "content-type": "text/event-stream" }, body: sse(evs) });
+      // fulfill() always ends the body, so mid-run is served by a local SSE
+      // server that never closes (researcher done, coder still running).
+      if (stage === "mid") return r.continue({ url: `http://127.0.0.1:${hang.address().port}/` });
+      await r.fulfill({ status: 200, headers: { "content-type": "text/event-stream" }, body: sse(SCRIPT) });
     });
   }
-  await page.goto(BASE, { waitUntil: "networkidle" });
+  await page.goto(base, { waitUntil: "networkidle" });
   await page.waitForTimeout(700);
   if (stage) {
     await page.click(".chip >> nth=0");
@@ -64,8 +69,13 @@ const results = {
   "desktop-run-dark": await shoot("desktop-run-dark", { width: 1440, height: 900, theme: "dark", stage: "done" }),
   "desktop-run-light": await shoot("desktop-run-light", { width: 1440, height: 900, theme: "light", stage: "done" }),
   "mobile-run-dark": await shoot("mobile-run-dark", { width: 390, height: 844, theme: "dark", stage: "done" }),
+  "desktop-midrun-dark": await shoot("desktop-midrun-dark", { width: 1440, height: 900, theme: "dark", stage: "mid" }),
   "desktop-no-provider": await shoot("desktop-no-provider", { width: 1280, height: 800, theme: "dark", live: false }),
 };
+// Error path against a REAL server whose provider rejects the key
+// (start it with ANTHROPIC_API_KEY=sk-ant-bogus on ERROR_BASE): nothing stubbed.
+if (process.env.ERROR_BASE) results["desktop-error-dark"] = await shoot("desktop-error-dark", { width: 1280, height: 800, theme: "dark", live: false, stage: "done", base: process.env.ERROR_BASE });
 await browser.close();
+hang.closeAllConnections(); hang.close();
 console.log(JSON.stringify({ avatarStateAtShot: results, consoleErrors: errors }, null, 2));
 process.exit(errors.length ? 1 : 0);
