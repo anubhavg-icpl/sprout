@@ -1,7 +1,7 @@
 // Provider resolution + single-agent adapters (xAI, Ollama).
 //
 // Contract: Anthropic powers the full multi-agent team (agents.ts). xAI and
-// Ollama run "solo mode": one streamed answer, no sub-agents, no web search —
+// Ollama run "solo mode": one streamed answer, no sub-agents, no web search;
 // the UI shows which mode is active via /api/health.
 // Invariants:
 //   - API keys are read from env here and never leave the server process.

@@ -3,7 +3,7 @@
 // Security invariant: model output is untrusted. This module NEVER assigns
 // innerHTML; every string reaches the DOM through createTextNode/textContent,
 // and links are restricted to http(s)/mailto with rel=noopener. test/markdown
-// asserts this — keep it that way when adding syntax.
+// asserts this, keep it that way when adding syntax.
 // Supported: fenced code (```lang), inline code, **bold**, *italic*, ~~strike~~,
 // [links](url), bare URLs, headings, ul/ol lists, blockquotes, tables, hr.
 // Streaming-friendly: an unterminated ``` fence renders as an open code block.

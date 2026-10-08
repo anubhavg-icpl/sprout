@@ -1,4 +1,4 @@
-// Sprout HTTP server — static files + a streaming chat proxy. Zero framework.
+// Sprout HTTP server, static files + a streaming chat proxy. Zero framework.
 //
 // Routes:
 //   GET  /api/health  -> { provider: {name, model, webSearch} | null }
@@ -8,7 +8,7 @@
 //   GET  /*           -> files under public/ (path-traversal guarded).
 // Trust boundary: the browser is untrusted. Request bodies are size-capped and
 // shape-validated, a per-IP token bucket limits /api/chat, and every response
-// carries a strict CSP (no inline script/style — see public/index.html).
+// carries a strict CSP (no inline script/style, see public/index.html).
 // Binds 127.0.0.1 by default; set HOST=0.0.0.0 only behind your own auth.
 import { join, normalize } from "node:path";
 import { resolveProvider, soloStream, type ChatTurn } from "./providers";
@@ -22,7 +22,7 @@ const RATE = { capacity: 10, refillPerSec: 10 / 60 }; // 10 burst, 10/min sustai
 
 const SECURITY_HEADERS: Record<string, string> = {
   "content-security-policy":
-    "default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob:; media-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
   "x-content-type-options": "nosniff",
   "referrer-policy": "no-referrer",
   "permissions-policy": "camera=(), geolocation=(), microphone=(self)",
@@ -58,7 +58,7 @@ export function parseHistory(body: unknown): ChatTurn[] | null {
 }
 
 async function chat(req: Request, ip: string): Promise<Response> {
-  if (!allow(ip)) return json({ error: "Slow down — rate limit reached. Try again in a few seconds." }, 429);
+  if (!allow(ip)) return json({ error: "Rate limit reached. Try again in a few seconds." }, 429);
   const len = Number(req.headers.get("content-length") ?? 0);
   if (len > MAX_BODY) return json({ error: "Request too large." }, 413);
   const raw = await req.text();
@@ -139,5 +139,5 @@ export function startServer(port = Number(process.env.PORT ?? 8787), hostname = 
 if (import.meta.main) {
   const s = startServer();
   const p = await resolveProvider();
-  console.log(`Sprout → http://${s.hostname}:${s.port}  (provider: ${p ? `${p.name}/${p.model}` : "none — see README"})`);
+  console.log(`Sprout → http://${s.hostname}:${s.port}  (provider: ${p ? `${p.name}/${p.model}` : "none, see README"})`);
 }

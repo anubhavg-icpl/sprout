@@ -1,4 +1,4 @@
-// Sprout 3D robot avatar — three.js + RobotExpressive.glb (CC0, Tomás Laulhé /
+// Sprout 3D robot avatar, three.js + RobotExpressive.glb (CC0, Tomás Laulhé /
 // Quaternius; morphs by Don McCurdy; see assets/licenses/robot-expressive-CC0.md).
 //
 // Contract (drop-in for the retired 2D rig in rig.js):
@@ -17,8 +17,8 @@
 // whole model root instead, which the mixer never animates.
 // Reduced motion: intensity 0 slows clips and swaps Dance for ThumbsUp.
 // Look: the GLB's three materials (Main shell, Grey joints, Black eyes/brows)
-// are REPLACED at load with a modern palette (see LOOK); lighting comes from a
-// procedural RoomEnvironment (no HDR file) + key/rim lights, ACES tone mapping.
+// are REPLACED at load with the design-system palette (see LOOK); lighting is a
+// procedural RoomEnvironment (no HDR file) plus neutral key/fill lights.
 
 import * as THREE from "../vendor/three/three.module.min.js";
 import { GLTFLoader } from "../vendor/three/addons/loaders/GLTFLoader.js";
@@ -29,13 +29,15 @@ export const STATES = ["idle", "listening", "thinking", "talking", "happy", "cel
 // [clip, loop?] per state; one-shot clips clamp on their last frame.
 const CLIPS = { idle: ["Idle", true], listening: ["Idle", true], thinking: ["Idle", true], talking: ["Yes", true], happy: ["ThumbsUp", false], celebrating: ["Dance", true], meditating: ["Sitting", false] };
 const FADE_S = 0.45;
-// Palette: pearl shell + graphite joints + glowing eyes in the UI accent.
+// Palette follows docs/DESIGN.md: neutral surfaces, ONE accent (the
+// family blue #2769FC) on the eyes, no glow, no neon, no gradients.
+// Concrete hex is the guide's sanctioned exception for canvas/WebGL surfaces
+// that cannot resolve CSS variables (DESIGN.md "Chart colour").
 const LOOK = {
-  Main: { color: 0xe6ebf2, roughness: 0.36, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.12, sheen: 0.4, sheenColor: 0xcde9ff },
-  Grey: { color: 0x2b313d, roughness: 0.38, metalness: 0.7, clearcoat: 0.6, clearcoatRoughness: 0.25 },
-  Black: { color: 0x0b1714, emissive: 0x2ef2c4, emissiveIntensity: 2.4, roughness: 0.2, metalness: 0 },
+  Main: { color: 0xf4f5f7, roughness: 0.42, metalness: 0, clearcoat: 0.35, clearcoatRoughness: 0.3 },
+  Grey: { color: 0x262626, roughness: 0.5, metalness: 0.25 },
+  Black: { color: 0x2769fc, roughness: 0.35, metalness: 0, emissive: 0x2769fc, emissiveIntensity: 0.25 },
 };
-const ACCENT = 0x2ef2c4;
 
 export async function createRobot(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -44,7 +46,7 @@ export async function createRobot(canvas) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.92;
+  renderer.toneMappingExposure = 1.0;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
@@ -52,19 +54,15 @@ export async function createRobot(canvas) {
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   scene.environmentIntensity = 0.65; // full-strength room env washes the white shell flat
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x1a2230, 0.6));
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x808080, 0.7));
   const key = new THREE.DirectionalLight(0xffffff, 2.2);
   key.position.set(3, 8, 6); key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
   Object.assign(key.shadow.camera, { left: -4, right: 4, top: 6, bottom: -2 });
   scene.add(key);
-  const rim = new THREE.DirectionalLight(0x8b7bff, 2.6); rim.position.set(-5, 5, -5); scene.add(rim);
-  const rim2 = new THREE.DirectionalLight(ACCENT, 1.6); rim2.position.set(5, 3, -4); scene.add(rim2);
-  const ground = new THREE.Mesh(new THREE.CircleGeometry(3.2, 64), new THREE.ShadowMaterial({ opacity: 0.35 }));
+  const fill = new THREE.DirectionalLight(0xffffff, 0.8); fill.position.set(-5, 4, -4); scene.add(fill);
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(3.2, 64), new THREE.ShadowMaterial({ opacity: 0.18 }));
   ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
-  // Glowing floor ring; its pulse speed/brightness follows the state (see loop).
-  const ring = new THREE.Mesh(new THREE.RingGeometry(1.55, 1.7, 96), new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.5, toneMapped: false }));
-  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.01; scene.add(ring);
 
   const gltf = await new GLTFLoader().loadAsync(MODEL_URL);
   const model = gltf.scene;
@@ -83,7 +81,6 @@ export async function createRobot(canvas) {
     }
     o.material = restyled.get(name); // morph targets work on any standard material in r150+
   });
-  const eyes = restyled.get("Black");
   scene.add(model);
   const skeleton = new THREE.SkeletonHelper(model); skeleton.visible = false; scene.add(skeleton);
 
@@ -151,12 +148,6 @@ export async function createRobot(canvas) {
     model.rotation.y += (wantY - model.rotation.y) * k;
     model.rotation.x += (wantX - model.rotation.x) * k;
     model.rotation.z += (wantZ - model.rotation.z) * k;
-    // Eyes + ring "breathe"; busier states glow faster and brighter.
-    const busy = state === "thinking" || state === "talking" || state === "celebrating";
-    const pulse = 0.5 + 0.5 * Math.sin(t * (busy ? 5 : 1.6));
-    if (eyes) eyes.emissiveIntensity = 1.8 + pulse * (busy ? 1.6 : 0.6) + (state === "talking" ? (mouth ?? 0) * 1.2 : 0);
-    ring.material.opacity = (state === "meditating" ? 0.25 : 0.3) + pulse * (busy ? 0.45 : 0.2);
-    ring.scale.setScalar(1 + pulse * (busy ? 0.06 : 0.02));
     renderer.render(scene, camera);
   });
 
@@ -172,6 +163,6 @@ export async function createRobot(canvas) {
     setMouth(v) { mouth = v === null ? null : Math.max(0, Math.min(1, v)); },
     setIntensity(v) { intensity = v; },
     setBones(v) { skeleton.visible = v; },
-    setBlink() { /* model has no eyelids — kept for API parity with the 2D rig */ },
+    setBlink() { /* model has no eyelids, kept for API parity with the 2D rig */ },
   };
 }

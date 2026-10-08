@@ -4,14 +4,17 @@
   CSP `script-src 'self'; style-src 'self'`, so inline code would be blocked.
   All behaviour lives in js/app.js (ES module); all styling in css/app.css.
 -->
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="color-scheme" content="dark light" />
-  <meta name="description" content="Sprout — an animated avatar that leads a team of AI sub-agents." />
-  <title>Sprout · Agent Avatar</title>
-  <link rel="icon" href="assets/icons/sparkles.svg" type="image/svg+xml" />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="description" content="Sprout: an animated avatar that leads a team of AI sub-agents." />
+  <title>Chat · Sprout</title>
+  <link rel="icon" href="assets/icons/robot.svg" type="image/svg+xml" />
+  <!-- Preload so font-display: optional (design contract) gets Geist on first paint instead of the fallback. -->
+  <link rel="preload" href="assets/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="assets/fonts/GeistMono-Variable.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="css/app.css" />
   <script type="module" src="js/app.js"></script>
 </head>
@@ -20,27 +23,26 @@
   <div class="app">
     <header class="topbar">
       <div class="brand">
-        <span class="logo" aria-hidden="true"><i class="ic ic-sparkles"></i></span>
-        <div>
+        <span class="logo" aria-hidden="true"><i class="ic ic-bot"></i></span>
+        <div class="brand-text">
           <h1>Sprout</h1>
           <p id="provider-line" class="sub">Connecting…</p>
         </div>
       </div>
       <div class="top-actions">
-        <span id="status-pill" class="pill" data-tone="muted"><span class="dot"></span><span id="status-text">Starting</span></span>
-        <button class="icon-btn" id="btn-voice" type="button" aria-pressed="false" title="Speak replies aloud (V)"><i class="ic ic-volume-x"></i><span class="sr">Toggle voice</span></button>
-        <button class="icon-btn" id="btn-theme" type="button" title="Toggle theme"><i class="ic ic-sun"></i><span class="sr">Toggle theme</span></button>
-        <button class="icon-btn" id="btn-settings" type="button" title="Settings"><i class="ic ic-settings"></i><span class="sr">Settings</span></button>
-        <button class="btn ghost" id="btn-new" type="button" title="New chat (Ctrl+Shift+O)"><i class="ic ic-plus"></i><span>New chat</span></button>
+        <span id="status-pill" class="status"><span class="dot" id="status-dot"></span><span id="status-text">Starting</span></span>
+        <button class="icon-btn" id="btn-voice" type="button" aria-pressed="false" aria-label="Speak replies aloud" title="Speak replies aloud"><i class="ic ic-volume-x"></i></button>
+        <button class="icon-btn" id="btn-theme" type="button" aria-label="Switch theme" title="Switch theme"><i class="ic ic-sun"></i></button>
+        <button class="icon-btn" id="btn-settings" type="button" aria-label="Settings" title="Settings"><i class="ic ic-settings"></i></button>
+        <button class="btn" id="btn-new" type="button" aria-label="New chat" title="New chat (Ctrl+Shift+O)"><i class="ic ic-plus"></i><span>New chat</span></button>
       </div>
     </header>
 
     <div id="banner" class="banner" hidden role="status"></div>
 
     <main class="layout">
-      <section class="stage-card" aria-label="Avatar and agent activity">
+      <section class="card stage-card" aria-label="Avatar and agent activity">
         <div class="stage">
-          <span class="stage-label">SPROUT · LEAD AGENT</span>
           <canvas id="avatar" aria-label="Animated 3D robot avatar"></canvas>
           <div class="now" aria-live="off">
             <strong id="state-name">Idle</strong>
@@ -54,42 +56,41 @@
           </div>
           <ol id="plan" class="plan" hidden aria-label="Plan"></ol>
           <ol id="timeline" class="timeline" aria-label="Sub-agent steps"></ol>
-          <p id="activity-empty" class="muted small">When Sprout delegates to the Researcher, Coder, Writer or Planner, each step appears here live.</p>
+          <p id="activity-empty" class="muted">Steps appear here when Sprout hands work to the researcher, coder, writer or planner.</p>
         </div>
       </section>
 
-      <section class="chat-card" aria-label="Conversation">
+      <section class="card chat-card" aria-label="Conversation">
         <div id="log" class="log" role="log" aria-live="polite" aria-relevant="additions" tabindex="0">
           <div id="empty" class="empty">
-            <div class="empty-hero"><i class="ic ic-bot"></i></div>
-            <h2>Hi, I'm Sprout.</h2>
-            <p>I lead a small team of specialist agents. Ask me anything — I'll research the web, write and run code, draft documents, or plan your next move.</p>
+            <h2>Start a conversation</h2>
+            <p>Sprout answers directly or hands the work to a researcher, coder, writer or planner. Pick an example or type your question.</p>
             <div class="chips" id="samples">
-              <button type="button" class="chip" data-prompt="Research the three most important AI announcements from this past week and summarise each with sources."><i class="ic ic-globe"></i>What's new in AI this week?</button>
-              <button type="button" class="chip" data-prompt="Write a Python function that finds the longest palindromic substring, run it on 'forgeeksskeegfor', and explain its complexity."><i class="ic ic-code-xml"></i>Write &amp; run a palindrome finder</button>
-              <button type="button" class="chip" data-prompt="Plan a 4-week learning path to go from zero to building a small web app, then draft a motivating kickoff email to myself."><i class="ic ic-list-checks"></i>Plan a learning path + kickoff email</button>
-              <button type="button" class="chip" data-prompt="Tell me a short, clever joke about recursion."><i class="ic ic-sparkles"></i>Tell me a recursion joke</button>
+              <button type="button" class="chip" data-prompt="Research the three most important AI announcements from this past week and summarise each with sources."><i class="ic ic-globe"></i>Summarise this week in AI with sources</button>
+              <button type="button" class="chip" data-prompt="Write a Python function that finds the longest palindromic substring, run it on 'forgeeksskeegfor', and explain its complexity."><i class="ic ic-code-xml"></i>Write and run a palindrome finder</button>
+              <button type="button" class="chip" data-prompt="Plan a 4-week learning path to go from zero to building a small web app, then draft a motivating kickoff email to myself."><i class="ic ic-list-checks"></i>Plan a learning path and a kickoff email</button>
+              <button type="button" class="chip" data-prompt="Explain recursion in one short paragraph with a simple example."><i class="ic ic-sparkles"></i>Explain recursion in one paragraph</button>
             </div>
           </div>
         </div>
 
         <form id="composer" class="composer" autocomplete="off">
           <label class="sr" for="composer-input">Message Sprout</label>
-          <textarea id="composer-input" rows="1" maxlength="8000" placeholder="Message Sprout…  (Enter to send, Shift+Enter for newline)"></textarea>
+          <textarea id="composer-input" rows="1" maxlength="8000" placeholder="Message Sprout"></textarea>
           <div class="composer-actions">
-            <button class="icon-btn" id="btn-mic" type="button" title="Dictate (hold to talk)" hidden><i class="ic ic-mic"></i><span class="sr">Dictate</span></button>
-            <button class="send" id="btn-send" type="submit" title="Send (Enter)"><i class="ic ic-send"></i><span class="sr">Send</span></button>
-            <button class="send stop" id="btn-stop" type="button" title="Stop (Esc)" hidden><i class="ic ic-square"></i><span class="sr">Stop</span></button>
+            <button class="icon-btn" id="btn-mic" type="button" aria-label="Dictate" title="Dictate" hidden><i class="ic ic-mic"></i></button>
+            <button class="send" id="btn-send" type="submit" aria-label="Send message" title="Send (Enter)"><i class="ic ic-send"></i></button>
+            <button class="send stop" id="btn-stop" type="button" aria-label="Stop generating" title="Stop (Esc)" hidden><i class="ic ic-square"></i></button>
           </div>
         </form>
-        <p class="footnote">Sprout can make mistakes. Sub-agent work runs on the model provider's sandbox; nothing executes on this machine.</p>
+        <p class="footnote">Answers can be wrong. Code runs in the model provider's sandbox, never on this machine.</p>
       </section>
     </main>
   </div>
 
   <dialog id="settings" aria-labelledby="settings-title">
     <form method="dialog" class="settings">
-      <header><h2 id="settings-title">Settings</h2><button class="icon-btn" value="close" title="Close"><i class="ic ic-x"></i><span class="sr">Close</span></button></header>
+      <header><h2 id="settings-title">Settings</h2><button class="icon-btn" value="close" aria-label="Close settings"><i class="ic ic-x"></i></button></header>
       <section>
         <h3>Avatar</h3>
         <label class="row">Motion intensity <output id="intensity-out">70%</output></label>
@@ -106,13 +107,13 @@
       </section>
       <section>
         <h3>Data</h3>
-        <p class="muted small">Conversations are stored only in this browser (localStorage). API keys never leave the server.</p>
+        <p class="muted">Conversations stay in this browser. API keys stay on the server.</p>
         <div class="row-btns">
-          <button type="button" class="btn ghost" id="btn-export"><i class="ic ic-download"></i>Export chat</button>
-          <button type="button" class="btn danger" id="btn-clear"><i class="ic ic-trash-2"></i>Clear history</button>
+          <button type="button" class="btn" id="btn-export"><i class="ic ic-download"></i>Export chat</button>
+          <button type="button" class="btn ghost danger" id="btn-clear"><i class="ic ic-trash-2"></i>Clear history</button>
         </div>
       </section>
-      <p class="muted small">Shortcuts: <kbd>Enter</kbd> send · <kbd>Esc</kbd> stop · <kbd>/</kbd> focus input · <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd> new chat</p>
+      <p class="muted caption">Shortcuts: <kbd>Enter</kbd> send · <kbd>Esc</kbd> stop · <kbd>/</kbd> focus input · <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd> new chat</p>
     </form>
   </dialog>
 

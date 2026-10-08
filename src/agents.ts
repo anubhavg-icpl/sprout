@@ -1,4 +1,4 @@
-// Sprout orchestrator — one lead agent that delegates to specialist sub-agents.
+// Sprout orchestrator, one lead agent that delegates to specialist sub-agents.
 //
 // Pattern: orchestrator-workers on the Claude Messages API (manual tool loop).
 //   Orchestrator tools (client-side, executed here): delegate, plan, emote.
@@ -34,7 +34,7 @@ const webOn = () => env("WEB_SEARCH") !== "0";
 
 // === SPECIALISTS ===
 // Tool narrowing on purpose: each specialist gets only what it needs.
-// Server tools run on Anthropic's infrastructure — nothing executes locally.
+// Server tools run on Anthropic's infrastructure, nothing executes locally.
 export const SPECIALISTS: Record<string, { label: string; blurb: string; effort: string; system: string; tools: () => any[] }> = {
   researcher: {
     label: "Researcher",
@@ -74,7 +74,7 @@ ${Object.entries(SPECIALISTS).map(([k, s]) => `- ${k}: ${s.blurb}`).join("\n")}
 
 How to work:
 - Simple chat, quick facts you are sure of, or opinions: answer yourself, no delegation.
-- Anything needing current information, sources, code that should be run, long-form writing, or multi-step work: delegate. Give each delegation a self-contained task and explicit success_criteria — specialists cannot see the conversation.
+- Anything needing current information, sources, code that should be run, long-form writing, or multi-step work: delegate. Give each delegation a self-contained task and explicit success_criteria, specialists cannot see the conversation.
 - Independent delegations should be issued in the SAME turn so they run in parallel.
 - For work with 3+ steps, call \`plan\` first, then call it again as steps complete.
 - Specialists' output is not shown to the user directly: synthesise it into one final answer, keep their source links, and say plainly if a specialist failed.
@@ -181,7 +181,7 @@ async function streamCall(
       } else if (ev.type === "content_block_stop" && toolInputs.has(ev.index)) {
         const t = toolInputs.get(ev.index)!;
         let input: any = {};
-        try { input = JSON.parse(t.json || "{}"); } catch { /* partial — still show the call */ }
+        try { input = JSON.parse(t.json || "{}"); } catch { /* partial, still show the call */ }
         emit({ type: "tool_call", stepId, name: t.name, detail: input.query ?? input.url ?? (input.code ? "running code" : "") });
       }
     }

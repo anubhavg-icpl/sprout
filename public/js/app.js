@@ -1,4 +1,4 @@
-// Sprout app controller — chat, agent-activity timeline, avatar choreography.
+// Sprout app controller: chat, agent-activity timeline, avatar choreography.
 //
 // Data flow: composer -> POST /api/chat -> SSE events (vocabulary owned by
 // src/agents.ts: run_started, text_delta, step_started, step_finished,
@@ -28,7 +28,7 @@ const log = $("log"), input = $("composer-input"), sendBtn = $("btn-send"), stop
 // === PREFS ===
 const PREF_KEY = "sprout.prefs.v1", STORE_KEY = "sprout.chat.v1";
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
-const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage blocked — keep in memory */ } };
+const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage blocked: keep in memory */ } };
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const prefs = Object.assign({ intensity: 70, bones: false, blink: true, meditate: true, sounds: true, tts: false, voice: "", theme: null }, load(PREF_KEY, {}));
 const savePrefs = () => save(PREF_KEY, prefs);
@@ -55,8 +55,8 @@ reduceMotion.addEventListener("change", applyMotion);
 
 const MOOD_TEXT = {
   idle: ["Idle", "Waiting for you"], listening: ["Listening", "I'm all ears"], thinking: ["Thinking", "Working it out"],
-  talking: ["Talking", "Answering you"], happy: ["Happy", "Done — anything else?"], celebrating: ["Celebrating", "Team delivered!"],
-  meditating: ["Meditating", "Resting — say hi to wake me"],
+  talking: ["Talking", "Answering you"], happy: ["Happy", "Reply finished"], celebrating: ["Celebrating", "Team finished the task"],
+  meditating: ["Resting", "Type to wake Sprout"],
 };
 let moodSince = 0, moodTimer = 0, idleTimer = 0, busy = false;
 /** Set avatar state; `hold` returns to idle after ms. Min dwell 350ms prevents strobing on fast streams. */
@@ -133,7 +133,17 @@ if (Recognition) {
 }
 
 // === RENDER ===
-function toast(text, tone) { const t = el("div", "toast", text); if (tone) t.dataset.tone = tone; $("toasts").append(t); setTimeout(() => t.remove(), 3800); }
+// Toasts (UEC Law 16): severity decides duration, not the caller. Info and
+// success 4000ms; errors never auto-dismiss. Close is always visible; at most
+// three are shown, the oldest is dropped when a fourth arrives.
+function toast(text, tone) {
+  const box = $("toasts"), t = el("div", "toast"); if (tone) t.dataset.tone = tone;
+  const close = el("button", "icon-btn"); close.type = "button"; close.setAttribute("aria-label", "Dismiss notification"); close.append(icon("x"));
+  close.onclick = () => t.remove();
+  t.append(el("span", "", text), close); box.append(t);
+  while (box.children.length > 3) box.firstElementChild.remove();
+  if (tone !== "bad") setTimeout(() => t.remove(), 4000);
+}
 
 function msgShell(role) {
   const wrap = el("div", `msg ${role === "user" ? "user" : "bot"}`);
@@ -214,7 +224,7 @@ function stepStarted(ev) {
   const head = el("div", "step-head");
   const badge = el("span", "step-badge"); badge.append(icon(AGENT_ICON[ev.agent] ?? "bot"));
   const title = el("div", "step-title"); const strong = el("strong", "", ev.label); title.append(strong, el("p", "", ev.task));
-  const state = el("span", "step-state", "working");
+  const state = statusNode("pending", "Working");
   head.append(badge, title, state);
   const tools = el("ul", "tools");
   const det = el("details"); const sum = el("summary"); sum.append(icon("chevron-down"), el("span", "", "Live output"));
@@ -232,9 +242,18 @@ function toolRow(s, ev) {
   const label = ev.name === "web_search" ? `Searching “${ev.detail}”` : ev.name === "web_fetch" ? `Reading ${ev.detail}` : `Running code${ev.detail && ev.detail !== "running code" ? `: ${ev.detail}` : ""}`;
   li.append(icon(n), el("span", "", label)); s.tools.append(li);
 }
+// One resolver for every status word + tone (UEC Law 17). A dot always ships
+// beside its word (Law 7); only failures pulse.
+const STATUS = {
+  pending: ["idle", "Pending"], active: ["pending", "In progress"], running: ["pending", "Working"],
+  done: ["ok", "Done"], ok: ["ok", "Done"], failed: ["error", "Failed"],
+};
+function canonicalStatus(key) { return STATUS[key] ?? ["idle", "Pending"]; }
+function statusNode(tone, word) { const s = el("span", "status"); const d = el("span", "dot"); d.dataset.tone = tone; s.append(d, el("span", "", word)); return s; }
+function setStepStatus(s, key, detail) { const [tone, word] = canonicalStatus(key); const n = statusNode(tone, word); if (detail) n.title = detail; s.state.replaceWith(n); s.state = n; s.li.dataset.status = key === "ok" ? "ok" : key; }
 function renderPlan(stepsIn) {
   const ol = $("plan"); ol.hidden = false; ol.replaceChildren();
-  for (const st of stepsIn) { const li = el("li", "", st.title); li.dataset.status = st.status; ol.append(li); }
+  for (const st of stepsIn) { const li = el("li"); const [tone, word] = canonicalStatus(st.status); li.append(el("span", "", st.title), statusNode(tone, word)); ol.append(li); }
   $("activity-empty").hidden = true;
 }
 
@@ -242,9 +261,9 @@ function renderPlan(stepsIn) {
 let controller = null;
 function setBusy(b) {
   busy = b; sendBtn.hidden = b; stopBtn.hidden = !b;
-  setStatus(b ? "busy" : health?.provider ? "ok" : "bad", b ? "Working" : health?.provider ? "Ready" : "Offline");
+  setStatus(b ? "pending" : health?.provider ? "ok" : "offline", b ? "Working" : health?.provider ? "Ready" : "Offline");
 }
-function setStatus(tone, text) { $("status-pill").dataset.tone = tone; $("status-text").textContent = text; }
+function setStatus(tone, text) { $("status-dot").dataset.tone = tone; $("status-text").textContent = text; }
 
 async function run() {
   if (busy || !messages.length) return;
@@ -291,8 +310,7 @@ async function run() {
           case "sources": live.sources.push(...ev.items); if (ev.stepId) steps.get(ev.stepId)?.sources.push(...ev.items); break;
           case "step_finished": {
             const s = steps.get(ev.stepId); if (!s) break;
-            s.li.dataset.status = ev.status; s.state.textContent = ev.status === "ok" ? "done" : "failed";
-            if (ev.status !== "ok") s.state.title = ev.error ?? "";
+            setStepStatus(s, ev.status === "ok" ? "ok" : "failed", ev.error);
             if (![...steps.values()].some((x) => x.li.dataset.status === "running")) mood("thinking", "Pulling it together");
             break;
           }
@@ -338,7 +356,7 @@ function autosize() { input.style.height = "auto"; input.style.height = Math.min
 function submit(text) {
   text = (text ?? input.value).trim();
   if (!text || busy) return;
-  if (!health?.provider) { toast("No model provider configured — see the banner above.", "bad"); return; }
+  if (!health?.provider) { toast("No model provider is configured. Follow the setup note at the top of the page.", "bad"); return; }
   messages.push({ role: "user", content: text }); persist();
   renderMessage(messages.at(-1), messages.length - 1);
   input.value = ""; autosize(); play("send"); scrollDown(true);
@@ -347,7 +365,7 @@ function submit(text) {
 $("composer").addEventListener("submit", (e) => { e.preventDefault(); submit(); });
 input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit(); } });
 input.addEventListener("input", () => { autosize(); if (!busy && input.value) mood("listening", "Reading as you type"); });
-input.addEventListener("focus", () => { if (!busy && rig.state === "meditating") mood("idle", "Oh! Hello again"); });
+input.addEventListener("focus", () => { if (!busy && rig.state === "meditating") mood("idle", "Ready"); });
 input.addEventListener("blur", () => { if (!busy && rig.state === "listening" && !input.value) mood("idle"); });
 stopBtn.addEventListener("click", () => controller?.abort());
 $("samples").addEventListener("click", (e) => { const c = e.target.closest("[data-prompt]"); if (c) { play("click"); submit(c.dataset.prompt); } });
@@ -360,7 +378,7 @@ document.addEventListener("keydown", (e) => {
 function newChat() {
   if (busy) controller?.abort();
   messages = []; persist(); redraw(); resetActivity(); synth?.cancel();
-  $("activity-count").textContent = "No runs yet"; mood("happy", "Fresh start!", 1500); input.focus();
+  $("activity-count").textContent = "No runs yet"; mood("happy", "New chat started", 1500); input.focus();
 }
 $("btn-new").addEventListener("click", newChat);
 
@@ -380,7 +398,7 @@ bind("opt-tts", "tts", syncVoiceBtn);
 bind("opt-voice", "voice", null, "value");
 if (!synth) { $("opt-tts").disabled = true; $("btn-voice").hidden = true; }
 function syncVoiceBtn() { const b = $("btn-voice"); b.setAttribute("aria-pressed", String(prefs.tts)); b.querySelector(".ic").className = `ic ic-${prefs.tts ? "volume-2" : "volume-x"}`; $("opt-tts").checked = prefs.tts; }
-$("btn-voice").addEventListener("click", () => { prefs.tts = !prefs.tts; if (!prefs.tts) synth?.cancel(); savePrefs(); syncVoiceBtn(); toast(prefs.tts ? "Replies will be spoken aloud" : "Voice off"); });
+$("btn-voice").addEventListener("click", () => { prefs.tts = !prefs.tts; if (!prefs.tts) synth?.cancel(); savePrefs(); syncVoiceBtn(); toast(prefs.tts ? "Spoken replies turned on" : "Spoken replies turned off"); });
 syncVoiceBtn();
 
 function setTheme(t) {
@@ -395,7 +413,7 @@ $("btn-theme").addEventListener("click", () => {
 });
 setTheme(prefs.theme);
 
-$("btn-clear").addEventListener("click", () => { if (confirm("Delete all messages stored in this browser?")) { newChat(); dlg.close(); toast("History cleared"); } });
+$("btn-clear").addEventListener("click", () => { if (confirm("Delete all messages stored in this browser?")) { newChat(); dlg.close(); toast("Chat history cleared"); } });
 $("btn-export").addEventListener("click", () => {
   const md = messages.map((m) => `### ${m.role === "user" ? "You" : "Sprout"}\n\n${m.content}\n`).join("\n");
   const a = el("a"); a.href = URL.createObjectURL(new Blob([md], { type: "text/markdown" })); a.download = `sprout-chat-${new Date().toISOString().slice(0, 10)}.md`; a.click();
@@ -411,15 +429,17 @@ async function checkHealth() {
   const p = health?.provider, banner = $("banner");
   if (p) {
     $("provider-line").textContent = p.team ? `Lead agent + 4 specialists · ${p.model}${p.webSearch ? " · web search" : ""}` : `Solo mode · ${p.name} / ${p.model}`;
-    banner.hidden = true; setStatus("ok", "Ready");
+    banner.hidden = true; setStatus(busy ? "pending" : "ok", busy ? "Working" : "Ready");
   } else {
     $("provider-line").textContent = health ? "No model provider configured" : "Server unreachable";
     banner.hidden = false; banner.replaceChildren();
     const msg = health
-      ? ["No model provider is configured. Set ", ["ANTHROPIC_API_KEY"], " (full agent team + web search), ", ["XAI_API_KEY"], ", or start Ollama, then restart the server."]
-      : ["Can't reach the Sprout server. Start it with ", ["bun run start"], "."];
-    for (const part of msg) banner.append(Array.isArray(part) ? el("code", "", part[0]) : document.createTextNode(part));
-    setStatus("bad", "Offline");
+      ? ["No model provider is configured. Set ", ["ANTHROPIC_API_KEY"], " for the full agent team with web search, or ", ["XAI_API_KEY"], ", or start Ollama, then restart the server."]
+      : ["The Sprout server is not reachable. Start it with ", ["bun run start"], "."];
+    const text = el("span");
+    for (const part of msg) text.append(Array.isArray(part) ? el("code", "", part[0]) : document.createTextNode(part));
+    banner.append(icon("circle-alert"), text);
+    setStatus("offline", "Offline");
   }
 }
 

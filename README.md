@@ -10,8 +10,8 @@ the avatar reacts to what the team is doing.
 |---|---|---|
 | Researcher | Live web research with sources | `web_search`, `web_fetch` |
 | Coder | Writes and runs code | code-execution sandbox |
-| Writer | Emails, docs, summaries | — |
-| Planner | Breaks goals into steps | — |
+| Writer | Emails, docs, summaries | None |
+| Planner | Breaks goals into steps | None |
 
 **Features:** streamed answers with Markdown/code/tables · parallel sub-agents with a live
 activity timeline and plan checklist · source chips · stop / retry / copy / export ·
